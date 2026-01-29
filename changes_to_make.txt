@@ -1,1 +1,1 @@
-1 - Implement a more space efficient approach to reverse bwt, which does use rank array.
+1 - Implement a more space efficient approach to reverse bwt, which does not use rank array.
