@@ -1,6 +1,6 @@
-#include<stdlib.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include "suffix_array.h"
-#include <stdio.h>
 
 void calc_bkt(unsigned int* bkt, unsigned int K, unsigned char* T, unsigned int n, bool end){
 	unsigned int i;

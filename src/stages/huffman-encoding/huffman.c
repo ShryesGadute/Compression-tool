@@ -1,14 +1,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include "huffman.h"
+#include "../../bit_man.h"
 
 #define DNE 0x8000
-unsigned char MASK = 128;
-
-#define set_bit(addr, i) (addr)[(i)/8] = ((addr)[(i)/8] | (MASK >> ((i)%8)))
-#define reset_bit(addr, i) (addr)[(i)/8] = ((addr)[(i)/8] & ~(MASK >> ((i)%8)))
-#define get_bit(addr, i) ((addr)[(i)/8] & (MASK >> ((i)%8))) ? 1:0
-
 typedef struct{
 	unsigned char code_length;
 	unsigned char* bit_array;

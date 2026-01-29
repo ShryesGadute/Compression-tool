@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <stdio.h>
+#include "mtf.h"
 
 //k <= 256 -> this condition should always hold
 unsigned char* make_linked_list(unsigned char* initial_alphabet, unsigned int k){

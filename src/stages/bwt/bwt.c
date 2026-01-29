@@ -1,7 +1,7 @@
 #include <stdlib.h>
+#include <stdbool.h>
 #include "suffix_array.h"
 #include "bwt.h"
-
 
 Bwt_Aggregate bwt(unsigned char* input_file, unsigned int file_length){
 	unsigned int* SA = (unsigned int*)malloc(file_length*sizeof(unsigned int));

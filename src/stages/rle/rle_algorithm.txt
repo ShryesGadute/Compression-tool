@@ -1,0 +1,30 @@
+How does this RLE algorithm work
+
+definitions
+bat - 2 bits
+nibble - 4 bits
+block - sub array of consecutive equal elements
+
+Our input is an array of bytes of length N
+
+Since, RLE compresses blocks, we assume the array to be an array of K blocks, from our definition it is clear that K <= N.
+
+The RLE encoding algorithm will encode our input array, an give 4 different arrays as output(in code we only give one array as output, with different sections representing different arrays). These output arrays are:
+Array_1
+Array_2
+Array_3
+Array_4
+
+Array_1
+Array_1 is a bit array, if there are K blocks in our input array, then the size of this array is K, a bit at index i represents if the block at index i of the input array has length greater than 1, bit 1 for yes nad bit bit 0 for no.
+
+Array_2
+Array_2 is a nibble array, it stores how many bats are required to store the length of a block, its length is equal to the number of blocks whose length is greater than 1.
+
+Array_3
+Array_3 is a bat array, it is also a variable number array where a number can only increase in size of a bat, suppose Array_2 says that some block in the input array requires 7 bats to store its size, those actual 7 bats will be stored in this array.
+
+Array_4
+Array_4 is byte array, it stores the actual first element of each block of the input array. 
+
+The four arrays are the output of the encoding stage, all the information required to reconstruct the original input is present in these four arrays. 
