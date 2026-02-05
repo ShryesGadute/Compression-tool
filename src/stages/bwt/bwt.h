@@ -1,6 +1,6 @@
 typedef struct{
-	unsigned int sentinel_position;
 	unsigned char* file;	
+	unsigned int sentinel_position;
 }Bwt_Aggregate;
 
 Bwt_Aggregate bwt(unsigned char* input_file, unsigned int n);

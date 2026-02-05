@@ -1,15 +1,41 @@
 #include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include "huffman.h"
 #include "../../bit_man.h"
 
 #define DNE 0x8000
+
+typedef unsigned char (*read_num_fn)(unsigned char* , unsigned int);
+typedef void (*write_num_fn)(unsigned char* , unsigned int, unsigned char);
+
+
+read_num_fn select_read_num_fn(unsigned char bit_length){
+	switch(bit_length){
+		case 1: return read_bit;
+		case 2: return read_bat;
+		case 4: return read_quad;
+		case 8: return read_byte;
+		default: return NULL;
+	}
+}
+
+write_num_fn select_write_num_fn(unsigned char bit_length){
+	switch(bit_length){
+		case 1: return write_bit;
+		case 2: return write_bat;
+		case 4: return write_quad;
+		case 8: return write_byte;
+		default: return NULL;
+	}
+}
+
+
 typedef struct{
 	unsigned char code_length;
 	unsigned char* bit_array;
 }Symbol_Code;
 	
-
 void heapify_down(unsigned short* heap, unsigned short heap_size, unsigned short index, Huffman_Node* node_list){
 	unsigned short left_child = 2*index+1;
 	unsigned short right_child = 2*index+2;
@@ -66,16 +92,26 @@ void add_to_heap(unsigned short* heap, unsigned short val, Huffman_Node* node_li
 	heapify_up(heap, (*heap_size)-1, node_list);
 }
 
-Huffman_Tree get_huffman_tree(unsigned char* input, unsigned int n){
-	unsigned int i;
-	unsigned int frequency[256] = {0};
 
-	for(i=0; i<n; i++) frequency[input[i]]++;
+unsigned int* count_frequency(unsigned char* input, unsigned int n, unsigned char bit_length){
+	unsigned int* frequencies = malloc((1u<<bit_length)*sizeof(unsigned int));
+	memset(frequencies, 0, (1u<<bit_length)*sizeof(unsigned int));
+	unsigned char (*read_num)(unsigned char*, unsigned int) = select_read_num_fn(bit_length);
 	
-	unsigned short unique_chr=0;
-	for(i=0; i<256; i++){
-		if(frequency[i]>0) unique_chr++;
+	unsigned char num;
+	for(unsigned int i=0; i<n; i++){
+		num = read_num(input, i);
+		frequencies[num]++;
 	}
+
+	return frequencies;
+}
+
+
+Huffman_Tree get_huffman_tree(unsigned int* frequency, unsigned int k){
+	unsigned int i;
+	unsigned short unique_chr=0;
+	for(i=0; i<k; i++) if(frequency[i]>0) unique_chr++;
 
 	Huffman_Tree ht;
 	ht.node_list = malloc((2*unique_chr)*sizeof(Huffman_Node));
@@ -84,7 +120,7 @@ Huffman_Tree get_huffman_tree(unsigned char* input, unsigned int n){
 	unsigned short heap_size=0;
 	unsigned short* heap = malloc(unique_chr*sizeof(unsigned short));
 
-	for(i=0; i<256; i++){
+	for(i=0; i<k;i++){
 		if(frequency[i] > 0){
 			//create new node
 			ht.node_list[allocated].symbol = i;
@@ -117,18 +153,19 @@ Huffman_Tree get_huffman_tree(unsigned char* input, unsigned int n){
 		add_to_heap(heap, new_node_index, ht.node_list, &heap_size);
 	}
 	
+	ht.num_of_nodes = allocated;
 	ht.root = ht.node_list + heap[0];
 	return ht;
 }
 
-Symbol_Code* get_codes_table(Huffman_Tree ht){
+Symbol_Code* get_codes_table(Huffman_Tree ht, unsigned int bit_length){
 	unsigned short stack[512];
-	unsigned short stack_length = 0;
+unsigned short stack_length = 0;
 	unsigned char code[32];
 	unsigned char code_size;
-	Symbol_Code* table = malloc(256*sizeof(Symbol_Code));
+	Symbol_Code* table = malloc((1<<bit_length)*sizeof(Symbol_Code));
 
-	for(unsigned short i=0; i<256; i++) table[i].code_length = 0;
+	for(unsigned short i=0; i<(1<<bit_length); i++) table[i].code_length = 0;
 
 	stack[2*stack_length] = ht.root->right_child + 32768;
 	stack[2*stack_length+1] = 0;
@@ -143,12 +180,12 @@ Symbol_Code* get_codes_table(Huffman_Tree ht){
 		current_node = stack[2*stack_length];
 		code_size = stack[2*stack_length+1];
 		if(current_node >= 32768){
-			reset_bit(code, code_size);
+			write_bit(code, code_size, 1);
 			code_size++;
 			current_node -= 32768;
 		}
 		else{
-			set_bit(code, code_size);
+			write_bit(code, code_size, 0);
 			code_size++;
 		}
 
@@ -171,98 +208,68 @@ Symbol_Code* get_codes_table(Huffman_Tree ht){
 	return table;
 }
 
-Symbol_Code* get_code_table(Huffman_Tree ht){
-	unsigned short stack[256];
-	unsigned short stack_length = 0;
-	unsigned char code[32];
-	unsigned char code_size=0;
-	Symbol_Code* table = malloc(256*sizeof(Symbol_Code));
-	stack[stack_length++] = (ht.root-ht.node_list);
-
-	unsigned short current_node;
-	while(stack_length != 0){
-		current_node = stack[--stack_length]; //pop stack
-		if(current_node >= 32768){
-			code_size = stack_length;+1;
-			reset_bit(code, code_size-1);
-			current_node -= 32768;
-		}
-	
-		if(ht.node_list[current_node].right_child == DNE){
-			//save
-			table[ht.node_list[current_node].symbol].code_length = code_size;
-			table[ht.node_list[current_node].symbol].bit_array = malloc(((code_size+7)/8)*sizeof(unsigned char));
-			for(unsigned int i=0; i<(code_size+7)/8; i++) table[ht.node_list[current_node].symbol].bit_array[i] = code[i];
-		}
-		
-		else{
-			set_bit(code, code_size);
-			code_size++;
-			stack[stack_length++] = ht.node_list[current_node].right_child + 32768;
-			stack[stack_length++] = ht.node_list[current_node].left_child;
-		}
-	}
-
-	return table;
-}
-
-void travel(Huffman_Node* node_list, unsigned short index){
-	if(node_list[index].left_child == DNE) ("%c", node_list[index].symbol);
-	("%d ", node_list[index].frequency);
-
-	if(node_list[index].left_child != DNE){
-		travel(node_list, node_list[index].left_child);
-		travel(node_list, node_list[index].right_child);
-	}
-}
-
-float bit_per_character(unsigned short root, Huffman_Node* node_list, unsigned char depth, unsigned int n){
-	if(node_list[root].left_child == DNE){
-		return ((float)depth * node_list[root].frequency)/n;
-	}
-	else{
-		float b1 = bit_per_character(node_list[root].left_child, node_list, depth+1, n);
-		float b2 = bit_per_character(node_list[root].right_child, node_list, depth+1, n);
-		return b1+b2;
-	}
-}
-
-void print_codes(unsigned char* input ,unsigned int n){
-	Huffman_Tree ht = get_huffman_tree(input, n);
-	travel(ht.node_list, ht.root-ht.node_list);
-	("\n");
-	Symbol_Code* table = get_codes_table(ht);
-	float bits_per_char = bit_per_character(ht.root-ht.node_list, ht.node_list, 0, n);
-	for(unsigned int i=0; i<256; i++){
-		if(table[i].code_length > 0){
-			("%c\t", i);
-			for(unsigned int j=0; j<table[i].code_length; j++){
-				bool bit = get_bit(table[i].bit_array, j);
-				("%d", bit);
-			}
-			("\n");
-		}
-	}
-}
-
-Huffman_Tree huffman_encode(unsigned char* input, unsigned int n, unsigned char* output, unsigned int* k){
-	Huffman_Tree ht = get_huffman_tree(input, n);
-	Symbol_Code* table = get_codes_table(ht);
+Huffman_Tree huffman_encode(unsigned char* input, unsigned int n, unsigned int bit_length, unsigned char* output, long long* k){
+	unsigned int* frequency = count_frequency(input, n, bit_length);
+	Huffman_Tree ht = get_huffman_tree(frequency, (1<<bit_length));
+	Symbol_Code* table = get_codes_table(ht, bit_length);
 	unsigned char count;
-	long filled = 0;
-
+	long long filled = 0;
+	unsigned char curr;
+	unsigned char (*read_num)(unsigned char*, unsigned int) = select_read_num_fn(bit_length);
 	for(unsigned int i=0; i<n; i++){
-		count = table[input[i]].code_length;
+		curr = read_num(input, i);	
+		count = table[curr].code_length;
 		for(unsigned char j=0; j<count; j++){
-			if(get_bit(table[input[i]].bit_array, j)) set_bit(output, filled);
-			else reset_bit(output, filled);
+			if(read_bit(table[curr].bit_array, j)) write_bit(output, filled, 1);
+			else write_bit(output, filled, 0);
 			filled++;
 		}
 	}
-	*k = (filled+7)/8;
+	*k = filled;
 
 	return ht;
 }
+
+unsigned int huffman_decode(unsigned char* input, unsigned char* output, long long n_bits, Huffman_Tree ht, unsigned char bit_length){
+	Huffman_Node* current_node = ht.root;
+	void (*write_num)(unsigned char*, unsigned int, unsigned char) = select_write_num_fn(bit_length);
+	unsigned int i_1=0;
+		
+	for(long long i=0; i<n_bits; i++){
+		if(current_node->left_child == DNE){
+			write_num(output, i_1, current_node->symbol);
+			i_1++;
+			current_node = ht.root;
+		}
+		
+		if(read_bit(input, i)) current_node = ht.node_list + current_node->right_child;
+		else current_node = ht.node_list + current_node->left_child;
+	}
+	
+	write_num(output, i_1, current_node->symbol);
+	i_1++;
+
+	return i_1;
+	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "mtf.h"
 
 //k <= 256 -> this condition should always hold

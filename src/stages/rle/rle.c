@@ -92,7 +92,7 @@ Rle_Aggregate run_length_encoding_i(unsigned char* input, unsigned int n){
 		}
 
 		else if(block_size > 1){
-			set_bit(array_1, i_1);
+			write_bit(array_1, i_1, 1);
 			array_4[i_1] = previous_char;
 			i_1++;
 
@@ -102,13 +102,13 @@ Rle_Aggregate run_length_encoding_i(unsigned char* input, unsigned int n){
 				temp_size >>= 2;
 				number_of_bats++;
 			}
-			set_quad(array_2, i_2, number_of_bats);
+			write_quad(array_2, i_2, number_of_bats);
 			i_2++;
 			i_3 += number_of_bats;
 			for(unsigned char k=0; k<number_of_bats+1; k++){
 				temp = (block_size & 3);
 				block_size >>= 2;
-				set_bat(array_3, i_3-k, temp);
+				write_bat(array_3, i_3-k, temp);
 			}
 			i_3++;
 			block_size = 1;		
@@ -123,7 +123,7 @@ Rle_Aggregate run_length_encoding_i(unsigned char* input, unsigned int n){
 	if(block_size == 1) array_4[i_1++] = previous_char;
 
 	else if(block_size > 1){
-		set_bit(array_1, i_1);
+		write_bit(array_1, i_1, 1);
 		array_4[i_1] = previous_char;
 		i_1++;
 
@@ -133,13 +133,13 @@ Rle_Aggregate run_length_encoding_i(unsigned char* input, unsigned int n){
 			temp_size >>= 2;
 			number_of_bats++;
 		}
-		set_quad(array_2, i_2, number_of_bats);
+		write_quad(array_2, i_2, number_of_bats);
 		i_2++;
 		i_3 += (number_of_bats);
 		for(unsigned char k=0; k<number_of_bats+1; k++){
 			temp = (block_size & 3);
 			block_size >>= 2;
-			set_bat(array_3, i_3-k, temp);
+			write_bat(array_3, i_3-k, temp);
 		}			
 		i_3++;
 		block_size = 1;			
@@ -150,7 +150,6 @@ Rle_Aggregate run_length_encoding_i(unsigned char* input, unsigned int n){
 
 
 unsigned char* reverse_run_length_encoding_i(Rle_Aggregate input){
-	unsigned int total_length = (input.array_1_n+7)/8 + (input.array_2_n+1)/2 + (input.array_3_n+3)/2 + input.array_1_n;
 	unsigned char* result = malloc(input.total_n*sizeof(unsigned char));
 	unsigned char* array_1 = input.output;
 	unsigned char* array_2 = array_1 + (input.array_1_n+7)/8;
@@ -168,15 +167,15 @@ unsigned char* reverse_run_length_encoding_i(Rle_Aggregate input){
 
 	for(unsigned int i=0; i<input.array_1_n; i++){
 		current_character = array_4[i];
-		if(get_bit(array_1, i)){
-			count_length = get_quad(array_2, i_2);
+		if(read_bit(array_1, i)){
+			count_length = read_quad(array_2, i_2);
 			count_length += 1;
 			i_2++;
 			
 			count = 0;
 			while(count_length != 0){
 			count <<= 2;
-			count += get_bat(array_3, i_3);
+			count += read_bat(array_3, i_3);
 			i_3++;
 			count_length--;
 			}
