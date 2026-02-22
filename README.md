@@ -12,6 +12,8 @@
 
 # Results
 
+All the sizes are in Bytes
+
 #### Calgary corpus
 | Filename | Original Size | Compressed Size | Improvement |
 | :--- | :--- | :--- | :--- |
